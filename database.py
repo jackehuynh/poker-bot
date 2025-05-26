@@ -125,13 +125,28 @@ def get_last_daily_claim(user_id: str):
     cursor = conn.cursor()
     cursor.execute("SELECT last_daily_claim FROM users WHERE user_id = ?", (user_id,))
     result = cursor.fetchone()
-    # conn.close()
+
     if result and result[0]:
-        # Assuming stored as ISO format string, convert back to datetime
-        # If PARSE_DECLTYPES works as expected for TIMESTAMP columns, this might already be datetime
-        if isinstance(result[0], str):
-            return datetime.datetime.fromisoformat(result[0])
-        return result[0] # Potentially already a datetime object
+        value = result[0]
+
+        dt = None
+        if isinstance(value, str):
+            try:
+                dt = datetime.datetime.fromisoformat(value)
+            except ValueError:
+                return None
+        elif isinstance(value, datetime.datetime):
+            dt = value
+        else:
+            return None
+        
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=datetime.timezone.utc)
+        elif dt.tzinfo != datetime.timezone.utc:
+            return dt.astimezone(datetime.timezone.utc)
+        
+        return dt
+    
     return None
 
 def set_last_daily_claim(user_id: str, timestamp: datetime.datetime):
