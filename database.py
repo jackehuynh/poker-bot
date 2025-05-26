@@ -76,23 +76,38 @@ def init_db(db_name_override=None):
 def create_user_if_not_exists(user_id: str):
     """Creates a new user with default currency 0 if the user does not exist."""
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT OR IGNORE INTO users (user_id, currency)
-        VALUES (?, ?)
-    """, (user_id, 0))
-    conn.commit()
+    cursor = None  # Initialize cursor to None
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR IGNORE INTO users (user_id, currency)
+            VALUES (?, ?)
+        """, (user_id, 0))
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"SQLite error in create_user_if_not_exists: {e}")
+    finally:
+        if cursor:
+            cursor.close()
     # conn.close()
 
 def get_user_currency(user_id: str) -> int:
     """Returns the currency for the given user_id."""
     create_user_if_not_exists(user_id) # Ensures user row exists
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT currency FROM users WHERE user_id = ?", (user_id,))
-    result = cursor.fetchone()
+    cursor = None  # Initialize cursor to None
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT currency FROM users WHERE user_id = ?", (user_id,))
+        result = cursor.fetchone()
+        return result[0] if result else 0
+    except sqlite3.Error as e:
+        print(f"SQLite error in get_user_currency: {e}")
+        return 0 # Return a default value in case of error
+    finally:
+        if cursor:
+            cursor.close()
     # conn.close()
-    return result[0] if result else 0
 
 def update_user_currency(user_id: str, amount_change: int) -> int:
     """Updates the user's currency by amount_change. Ensures currency does not go below zero."""
@@ -108,26 +123,36 @@ def update_user_currency(user_id: str, amount_change: int) -> int:
         new_currency = 0
         
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE users
-        SET currency = ?
-        WHERE user_id = ?
-    """, (new_currency, user_id))
-    conn.commit()
+    cursor = None  # Initialize cursor to None
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE users
+            SET currency = ?
+            WHERE user_id = ?
+        """, (new_currency, user_id))
+        conn.commit()
+        return new_currency
+    except sqlite3.Error as e:
+        print(f"SQLite error in update_user_currency: {e}")
+        return current_currency # Return current_currency in case of error to indicate no change
+    finally:
+        if cursor:
+            cursor.close()
     # conn.close()
-    return new_currency
 
 def get_last_daily_claim(user_id: str):
     """Returns the last_daily_claim timestamp for the user. Can be None if never claimed."""
     create_user_if_not_exists(user_id)
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT last_daily_claim FROM users WHERE user_id = ?", (user_id,))
-    result = cursor.fetchone()
+    cursor = None  # Initialize cursor to None
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT last_daily_claim FROM users WHERE user_id = ?", (user_id,))
+        result = cursor.fetchone()
 
-    if result and result[0]:
-        value = result[0]
+        if result and result[0]:
+            value = result[0]
 
         dt = None
         if isinstance(value, str):
@@ -145,41 +170,85 @@ def get_last_daily_claim(user_id: str):
         elif dt.tzinfo != datetime.timezone.utc:
             return dt.astimezone(datetime.timezone.utc)
         
-        return dt
-    
-    return None
+            dt = None
+            if isinstance(value, str):
+                try:
+                    dt = datetime.datetime.fromisoformat(value)
+                except ValueError:
+                    return None
+            elif isinstance(value, datetime.datetime):
+                dt = value
+            else:
+                return None
+            
+            if dt.tzinfo is None:
+                return dt.replace(tzinfo=datetime.timezone.utc)
+            elif dt.tzinfo != datetime.timezone.utc:
+                return dt.astimezone(datetime.timezone.utc)
+            
+            return dt
+        
+        return None
+    except sqlite3.Error as e:
+        print(f"SQLite error in get_last_daily_claim: {e}")
+        return None # Return None in case of error
+    finally:
+        if cursor:
+            cursor.close()
 
 def set_last_daily_claim(user_id: str, timestamp: datetime.datetime):
     """Updates the last_daily_claim for the user with the given timestamp."""
     create_user_if_not_exists(user_id)
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE users
-        SET last_daily_claim = ?
-        WHERE user_id = ?
-    """, (timestamp.isoformat(), user_id)) # Store as ISO string for broader compatibility
-    conn.commit()
+    cursor = None  # Initialize cursor to None
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE users
+            SET last_daily_claim = ?
+            WHERE user_id = ?
+        """, (timestamp.isoformat(), user_id)) # Store as ISO string for broader compatibility
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"SQLite error in set_last_daily_claim: {e}")
+    finally:
+        if cursor:
+            cursor.close()
     # conn.close()
 
 def get_setting(key: str) -> str | None:
     """Returns the value for the given key from the settings table. Returns None if not found."""
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
-    result = cursor.fetchone()
+    cursor = None  # Initialize cursor to None
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = ?", (key,))
+        result = cursor.fetchone()
+        return result[0] if result else None
+    except sqlite3.Error as e:
+        print(f"SQLite error in get_setting: {e}")
+        return None # Return None in case of error
+    finally:
+        if cursor:
+            cursor.close()
     # conn.close()
-    return result[0] if result else None
 
 def set_setting(key: str, value: str):
     """Inserts or replaces a setting in the settings table."""
     conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT OR REPLACE INTO settings (key, value)
-        VALUES (?, ?)
-    """, (key, value))
-    conn.commit()
+    cursor = None  # Initialize cursor to None
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT OR REPLACE INTO settings (key, value)
+            VALUES (?, ?)
+        """, (key, value))
+        conn.commit()
+    except sqlite3.Error as e:
+        print(f"SQLite error in set_setting: {e}")
+    finally:
+        if cursor:
+            cursor.close()
     # conn.close()
 
 if __name__ == '__main__':

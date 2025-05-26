@@ -40,60 +40,64 @@ async def on_ready():
 @bot.command(name='daily')
 async def daily(ctx):
     """Allows users to claim a daily currency reward."""
+    print(f"[DAILY COMMAND DEBUG] ctx.author: {repr(ctx.author)}, ctx.author.id: {ctx.author.id}")
     user_id = str(ctx.author.id) # Ensure user_id is a string for database consistency
-    database.create_user_if_not_exists(user_id)
-
-    daily_cooldown_minutes_str = database.get_setting('daily_cooldown_minutes')
     try:
-        daily_cooldown_minutes = int(daily_cooldown_minutes_str)
-    except (TypeError, ValueError):
-        daily_cooldown_minutes = 120 # Default cooldown if setting is invalid or not found
-        print(f"Warning: Could not parse 'daily_cooldown_minutes' setting ('{daily_cooldown_minutes_str}'). Using default {daily_cooldown_minutes} minutes.")
+        database.create_user_if_not_exists(user_id)
 
+        daily_cooldown_minutes_str = database.get_setting('daily_cooldown_minutes')
+        try:
+            daily_cooldown_minutes = int(daily_cooldown_minutes_str)
+        except (TypeError, ValueError):
+            daily_cooldown_minutes = 120 # Default cooldown if setting is invalid or not found
+            print(f"Warning: Could not parse 'daily_cooldown_minutes' setting ('{daily_cooldown_minutes_str}'). Using default {daily_cooldown_minutes} minutes.")
 
-    last_claim_timestamp = database.get_last_daily_claim(user_id) # Expected to be datetime object or None
+        last_claim_timestamp = database.get_last_daily_claim(user_id) # Expected to be datetime object or None
 
-    if last_claim_timestamp:
-        # Ensure last_claim_timestamp is offset-aware (UTC) if it's naive, for correct comparison
-        # Assuming database stores it as UTC directly from datetime.utcnow()
-        # If it were naive, it would need: last_claim_timestamp = last_claim_timestamp.replace(tzinfo=datetime.timezone.utc)
-        
-        cooldown_duration = datetime.timedelta(minutes=daily_cooldown_minutes)
-        current_time_utc = datetime.datetime.now(datetime.timezone.utc) # Use timezone-aware current time
-
-        # If last_claim_timestamp is naive, make it aware (assuming it's UTC)
-        if last_claim_timestamp.tzinfo is None:
-            last_claim_timestamp = last_claim_timestamp.replace(tzinfo=datetime.timezone.utc)
-
-        time_since_last_claim = current_time_utc - last_claim_timestamp
-
-        if time_since_last_claim < cooldown_duration:
-            remaining_time = cooldown_duration - time_since_last_claim
+        if last_claim_timestamp:
+            # Ensure last_claim_timestamp is offset-aware (UTC) if it's naive, for correct comparison
+            # Assuming database stores it as UTC directly from datetime.utcnow()
+            # If it were naive, it would need: last_claim_timestamp = last_claim_timestamp.replace(tzinfo=datetime.timezone.utc)
             
-            # Formatting remaining_time
-            total_seconds = int(remaining_time.total_seconds())
-            hours = total_seconds // 3600
-            minutes = (total_seconds % 3600) // 60
-            seconds = total_seconds % 60
-            
-            remaining_time_str = ""
-            if hours > 0:
-                remaining_time_str += f"{hours} hour(s) "
-            if minutes > 0:
-                remaining_time_str += f"{minutes} minute(s) "
-            if hours == 0 and minutes == 0 : # Show seconds only if less than a minute remaining
-                 remaining_time_str += f"{seconds} second(s)"
-            remaining_time_str = remaining_time_str.strip()
+            cooldown_duration = datetime.timedelta(minutes=daily_cooldown_minutes)
+            current_time_utc = datetime.datetime.now(datetime.timezone.utc) # Use timezone-aware current time
 
-            await ctx.send(f"You have already claimed your daily reward. Try again in {remaining_time_str}.")
-            return
+            # If last_claim_timestamp is naive, make it aware (assuming it's UTC)
+            if last_claim_timestamp.tzinfo is None:
+                last_claim_timestamp = last_claim_timestamp.replace(tzinfo=datetime.timezone.utc)
 
-    # Reward logic
-    reward_amount = 200  # Define the reward amount
-    new_balance = database.update_user_currency(user_id, reward_amount)
-    database.set_last_daily_claim(user_id, datetime.datetime.now(datetime.timezone.utc)) # Store as UTC
+            time_since_last_claim = current_time_utc - last_claim_timestamp
 
-    await ctx.send(f"You claimed your daily {reward_amount} currency! Your new balance is {new_balance}.")
+            if time_since_last_claim < cooldown_duration:
+                remaining_time = cooldown_duration - time_since_last_claim
+                
+                # Formatting remaining_time
+                total_seconds = int(remaining_time.total_seconds())
+                hours = total_seconds // 3600
+                minutes = (total_seconds % 3600) // 60
+                seconds = total_seconds % 60
+                
+                remaining_time_str = ""
+                if hours > 0:
+                    remaining_time_str += f"{hours} hour(s) "
+                if minutes > 0:
+                    remaining_time_str += f"{minutes} minute(s) "
+                if hours == 0 and minutes == 0 : # Show seconds only if less than a minute remaining
+                     remaining_time_str += f"{seconds} second(s)"
+                remaining_time_str = remaining_time_str.strip()
+
+                await ctx.send(f"You have already claimed your daily reward. Try again in {remaining_time_str}.")
+                return
+
+        # Reward logic
+        reward_amount = 200  # Define the reward amount
+        new_balance = database.update_user_currency(user_id, reward_amount)
+        database.set_last_daily_claim(user_id, datetime.datetime.now(datetime.timezone.utc)) # Store as UTC
+
+        await ctx.send(f"You claimed your daily {reward_amount} currency! Your new balance is {new_balance}.")
+    except Exception as e:
+        print(f"Error in !daily command during database operation: {e}")
+        await ctx.send("An error occurred while processing your daily claim. Please try again later.")
 
 @bot.command(name='set')
 @commands.has_permissions(administrator=True)
