@@ -64,36 +64,55 @@ The following environment variables are used to configure the bot:
     *   Default: `discord_bot.db` (in the current working directory).
     *   Example for Docker: `/data/discord_bot.db` (when using a volume mounted at `/data`).
 
-## Running with Docker
+## Running with Docker (using Docker Compose)
 
-To build and run the bot using Docker:
+This project includes a `docker-compose.yml` file to simplify running the bot with Docker.
 
-1.  **Build the Docker image:**
-    Replace `your_bot_image_name` with your desired image name (e.g., `discord-blackjack-bot`).
+**Prerequisites:**
+*   Docker installed: [https://docs.docker.com/get-docker/](https://docs.docker.com/get-docker/)
+*   Docker Compose installed: [https://docs.docker.com/compose/install/](https://docs.docker.com/compose/install/) (Often included with Docker Desktop)
+
+**Steps:**
+
+1.  **Clone the repository:**
     ```bash
-    docker build -t your_bot_image_name .
+    git clone <repository_url>
+    cd <repository_directory>
     ```
 
-2.  **Create a Docker volume (recommended for database persistence):**
-    This step is only needed once to create the volume.
-    ```bash
-    docker volume create my_bot_data
-    ```
+2.  **Configure Environment Variables:**
+    *   Create a file named `.env` in the root of the project.
+    *   Add the following content to the `.env` file, replacing `your_discord_token_here` with your actual Discord bot token:
+        ```env
+        DISCORD_TOKEN=your_discord_token_here
+        DB_PATH=discord_bot.db
+        ```
+    *   The `DB_PATH` variable specifies the name of the SQLite database file. It will be created in the project's root directory on your host machine because the `docker-compose.yml` file mounts the current directory (`./`) into the `/app` directory in the container.
 
-3.  **Run the Docker container:**
-    *   Replace `YOUR_ACTUAL_BOT_TOKEN` with your bot's actual token.
-    *   Replace `your_bot_image_name:latest` with the image name and tag you used in the build step.
-    *   The command below runs the bot in detached mode (`-d`), sets the required token, configures `DB_PATH` to use a path inside the mounted volume, and mounts `my_bot_data` volume to `/data` in the container for database persistence.
-
+3.  **Build and Run the Bot:**
+    Open a terminal in the project's root directory (where `docker-compose.yml` is located) and run:
     ```bash
-    docker run -d \
-      --env DISCORD_BOT_TOKEN="YOUR_ACTUAL_BOT_TOKEN" \
-      --env DB_PATH="/data/discord_bot.db" \
-      -v my_bot_data:/data \
-      --name blackjack-bot-container \
-      your_bot_image_name:latest
+    docker-compose up -d
     ```
-    *   The `--name blackjack-bot-container` flag is optional but helpful for easily managing the container (e.g., `docker logs blackjack-bot-container`, `docker stop blackjack-bot-container`).
+    Or, for newer versions of Docker Compose (v2):
+    ```bash
+    docker compose up -d
+    ```
+    This command will:
+    *   Build the Docker image for the bot (if not already built) based on the `Dockerfile`.
+    *   Start the bot service in detached mode (`-d`).
+    *   The bot's console output (logs) can be viewed using `docker-compose logs -f app` or `docker compose logs -f app`.
+
+4.  **Stopping the Bot:**
+    To stop the bot and remove the containers, run:
+    ```bash
+    docker-compose down
+    ```
+    Or, for newer versions:
+    ```bash
+    docker compose down
+    ```
+    The SQLite database file (`discord_bot.db` or whatever you set in `DB_PATH`) will remain in your project directory.
 
 ## Dependencies
 
