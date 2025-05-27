@@ -1,0 +1,55 @@
+# Cache files
+.cache/
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+.Python/
+
+# Build artifacts
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+MANIFEST
+*.manifest
+*.spec
+
+# Log and temporary files
+pip-log.txt
+pip-delete-this-directory.txt
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+instance/
+.webassets-cache
+.pytest_cache/
+.mypy_cache/
+
+# Editor temporary files
+*.swp
+*.swo
+*.swn
+
+# Environment files - IMPORTANT to ignore
+.env

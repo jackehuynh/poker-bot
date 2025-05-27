@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000" # Adjust if the bot uses a different port or doesn't need port mapping
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    # command: ["python", "bot.py"] # Uncomment and set appropriately if your Dockerfile needs it
+                                     # For a Discord bot, this usually starts bot.py
+
+# No separate database service is needed for SQLite.
+# The database file will be created inside the app container,
+# and because of the './:/app' volume mount, it will persist 
+# in your project directory on the host machine.
+# Ensure DB_PATH in your .env file points to a path accessible by the app,
+# e.g., discord_bot.db (will be in /app/discord_bot.db in container)
+# or data/discord_bot.db (will be in /app/data/discord_bot.db in container, ensure data dir exists or app creates it).
